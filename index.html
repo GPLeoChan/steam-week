@@ -1,0 +1,206 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GP MATH & STEAM WEEK - Live Leaderboard</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #1e3c72, #2a5298, #ff4b1f, #ff9068);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(15px);
+            max-width: 500px;
+            width: 90%;
+            padding: 40px 25px;
+            border-radius: 30px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        /* Selection View */
+        .main-title { color: #1a2a6c; font-size: 32px; font-weight: 800; margin-bottom: 5px; }
+        .sub-title { color: #666; margin-bottom: 25px; font-size: 18px; }
+        .group-grid { display: flex; flex-direction: column; gap: 10px; }
+        .group-btn {
+            padding: 16px;
+            background: white;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: 0.3s;
+        }
+        .group-btn:hover { transform: translateX(10px); border-color: #007bff; background: #f0f7ff; }
+
+        /* Timer View */
+        .timer-display { font-size: 72px; margin: 20px 0; font-family: monospace; font-weight: bold; color: #ff416c; }
+        .action-btn { padding: 15px 45px; font-size: 22px; cursor: pointer; border: none; border-radius: 50px; font-weight: 900; }
+        #startBtn { background: #28a745; color: white; box-shadow: 0 5px 0 #1e7e34; }
+        #stopBtn { background: #dc3545; color: white; box-shadow: 0 5px 0 #bd2130; display: none; }
+        
+        /* Leaderboard */
+        .leaderboard { background: #f8f9fa; padding: 20px; border-radius: 20px; margin-top: 25px; text-align: left; }
+        .rank-item { display: flex; background: white; padding: 12px; margin: 8px 0; border-radius: 12px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .rank-medal { width: 35px; font-size: 1.2em; }
+        .rank-name { flex-grow: 1; font-weight: 700; }
+        .rank-time { font-family: monospace; font-weight: bold; color: #007bff; }
+        
+        .footer-nav { margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="selectionView">
+        <div class="main-title">GP MATH & STEAM WEEK</div>
+        <div class="sub-title">Live Challenge</div>
+        <div class="group-grid">
+            <button class="group-btn" onclick="selectGroup('Puzzle DOJO !', '🧩')"><span>🧩</span> Puzzle DOJO !</button>
+            <button class="group-btn" onclick="selectGroup('Mario kart Get Set Go !', '🏎️')"><span>🏎️</span> Mario kart Get Set Go !</button>
+            <button class="group-btn" onclick="selectGroup('VEX Grabbing Hunter', '🤖')"><span>🤖</span> VEX Grabbing Hunter</button>
+            <button class="group-btn" onclick="selectGroup('Soar & Score', '🏹')"><span>🏹</span> Soar & Score</button>
+            <button class="group-btn" onclick="selectGroup('Spare', '🎳')"><span>🎳</span> Spare</button>
+        </div>
+    </div>
+
+    <div id="timerView" style="display:none">
+        <div id="groupIconHeader" style="font-size: 45px;"></div>
+        <h2 id="activeGroupName" style="color:#1a2a6c; margin: 5px 0;">Activity</h2>
+        <div class="timer-display" id="display">0.00s</div>
+        
+        <button id="startBtn" class="action-btn" onclick="startTimer()">START</button>
+        <button id="stopBtn" class="action-btn" onclick="stopTimer()">STOP</button>
+
+        <div class="leaderboard">
+            <h3 style="text-align:center; margin: 0 0 15px 0;">🏆 GLOBAL TOP 3</h3>
+            <div id="rankList">Connecting to cloud...</div>
+        </div>
+        
+        <div class="footer-nav">
+            <span style="cursor:pointer; text-decoration:underline; color:#666;" onclick="goBack()">← CHANGE ACTIVITY</span>
+            <span style="cursor:pointer; color:#ffcccc;" onclick="clearCurrentRecords()">Reset</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Your Firebase Config (Corrected & Applied)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCzwoGJLuqXHhIw9Vo_Xg9rijwnZljqc0M",
+        authDomain: "steam-week-ba0e1.firebaseapp.com",
+        databaseURL: "https://steam-week-ba0e1-default-rtdb.firebaseio.com",
+        projectId: "steam-week-ba0e1",
+        storageBucket: "steam-week-ba0e1.firebasestorage.app",
+        messagingSenderId: "1069665528989",
+        appId: "1:1069665528989:web:2eb2e4bb8225f18b93f874",
+        measurementId: "G-TX3FF9MDGL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let currentGroup = "";
+    let startTime, timerInterval, elapsedTime = 0;
+
+    function selectGroup(name, icon) {
+        currentGroup = name;
+        document.getElementById('activeGroupName').innerText = name;
+        document.getElementById('groupIconHeader').innerText = icon;
+        document.getElementById('selectionView').style.display = 'none';
+        document.getElementById('timerView').style.display = 'block';
+        
+        // Listen to cloud data
+        const scoreRef = database.ref('scores/' + currentGroup);
+        scoreRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            updateRankUI(data);
+        });
+    }
+
+    function updateRankUI(data) {
+        const rankList = document.getElementById('rankList');
+        rankList.innerHTML = '';
+        if (!data) {
+            rankList.innerHTML = '<p style="text-align:center; color:gray;">Waiting for champions...</p>';
+            return;
+        }
+        
+        const scoresArray = Object.values(data).sort((a, b) => a.time - b.time).slice(0, 3);
+        scoresArray.forEach((entry, index) => {
+            const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+            rankList.innerHTML += `
+                <div class="rank-item">
+                    <span class="rank-medal">${medal}</span>
+                    <span class="rank-name">${entry.name}</span>
+                    <span class="rank-time">${entry.time.toFixed(2)}s</span>
+                </div>`;
+        });
+    }
+
+    function startTimer() {
+        elapsedTime = 0; startTime = Date.now();
+        timerInterval = setInterval(() => {
+            elapsedTime = (Date.now() - startTime) / 1000;
+            document.getElementById('display').innerText = elapsedTime.toFixed(2) + "s";
+        }, 10);
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('startBtn').style.display = 'inline-block';
+        document.getElementById('startBtn').innerText = 'TRY AGAIN';
+
+        setTimeout(() => {
+            const userName = prompt(`CHALLENGE DONE!\nYour Time: ${elapsedTime.toFixed(2)}s\nEnter your name:`, "Champion");
+            if (userName) {
+                // PUSH TO CLOUD
+                database.ref('scores/' + currentGroup).push({
+                    name: userName,
+                    time: elapsedTime,
+                    timestamp: Date.now()
+                });
+            }
+        }, 100);
+    }
+
+    function goBack() {
+        if (timerInterval) clearInterval(timerInterval);
+        document.getElementById('selectionView').style.display = 'block';
+        document.getElementById('timerView').style.display = 'none';
+    }
+
+    function clearCurrentRecords() {
+        if(confirm(`Clear records for ${currentGroup}?`)) {
+            database.ref('scores/' + currentGroup).remove();
+        }
+    }
+</script>
+</body>
+</html>
